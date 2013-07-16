@@ -1,0 +1,15 @@
+modem
+noauth
+nomppe
+nodeflate
+noccp
+noipv6
+noipx
+
+connect "/usr/sbin/chat -v -f /etc/chatscripts/shore"
+/dev/eser1
+19200
+lcp-echo-failure 4
+lcp-echo-interval 45
+mtu 296
+mru 296
