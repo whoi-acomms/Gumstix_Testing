@@ -1,0 +1,4 @@
+#!/bin/bash
+
+/usr/bin/python /home/acomms/syncfiles.py
+
