@@ -5,11 +5,11 @@ INSTALL_DIR=/home/acomms/scripts
 CONTROL_FILE_DIR=/home/acomms/fromshore/
 SCRIPT_NAME=dorecord.py
 
-THIS_SCRIPT=$(INSTALL_DIR)/$(SCRIPT_NAME)
+THIS_SCRIPT=$INSTALL_DIR/$SCRIPT_NAME
 
 #Custom Variables
 RECORDINGS_DIR=/home/acomms/recordings
-CONTROL_FILE=$(CONTROL_FILE_DIR)/recordcmd
+CONTROL_FILE=$CONTROL_FILE_DIR/recordcmd
 
 
 #Create Directories
@@ -18,7 +18,7 @@ mkdir -p $RECORDINGS_DIR
 mkdir -p $CONTROL_FILE_DIR
 
 #Copy File
-cp 
+cp -af $SCRIPT_NAME $INSTALL_DIR/.
 
 #Turn off Recorder
 echo "off" > $CONTROL_FILE
