@@ -8,7 +8,7 @@ There is a good reason we don't use the multiprocessing module.  Trust me.
 '''
 
 from time import sleep
-import subprocess
+import subprocess,os
 from datetime import datetime
 import shutil
 
@@ -23,6 +23,7 @@ class DoRecord(object):
         self.current_mode = "off"
         self.slow_sleep_seconds = 600
         self.recordings_dir = '/home/acomms/recordings'
+        self.ismount = False
         
         self.running_process = None
         
@@ -32,7 +33,10 @@ class DoRecord(object):
         while True:        
             # Default to slow recording
             new_mode = 'slow'
-            
+
+            if self.ismount and not os.path.ismount(self.recordings_dir):                        
+                subprocess.check_call(["mount", self.recordings_dir])
+				
             try:
                 with open(self.command_file_path, 'r') as cmdfile:
                     new_mode = str(cmdfile.read())
