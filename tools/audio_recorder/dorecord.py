@@ -31,7 +31,7 @@ class DoRecord(object):
         
     
     def run_loop(self):
-        
+        self.modem.write("$CCPAS,GSTX REC Start\r\n")
         while True:        
             # Default to slow recording
             new_mode = 'slow'
@@ -44,11 +44,13 @@ class DoRecord(object):
                     new_mode = str(cmdfile.read())
             except:
                 print("Error reading mode file")
+				self.modem.write("$CCPAS,GSTX REC ERR read mode file fail\r\n")
                 
             # If we're off, just check again in 10 seconds
             if 'off' in new_mode:
                 sleep(10)
-                break     
+				self.modem.write("$CCPAS,GSTX REC OFF\r\n")
+                continue     
             
             # If we aren't off, we definitely want to make a recording.
             self.make_recording()
@@ -71,17 +73,15 @@ class DoRecord(object):
 
     def SendModemMsg(self,timestr):
         f = os.statvfs(self.recordings_dir)
-        totalSizeMB = (f[statvfs.F_BSIZE] * f[statvfs.F_BFREE]) / 1024/1024/1024
+        totalSizeMB = (f[statvfs.F_BSIZE] * f[statvfs.F_BFREE]) / 1024/1024
 
-        Msg = "$CCPAS,GSTX REC TMSTMP:"+timestr +" FREE: " +str(totalSizeMB)+"*"
+        Msg = "$CCPAS,GSTX REC@"+timestr +" FREE: " +str(totalSizeMB)+" MB\r\n"
         self.modem.write(Msg)
-
-
-
         
     def __del__(self):
         if self.running_process != None:
             self.running_process.terminate()
+		self.modem.write("$CCPAS,GSTX REC Terminated\r\n")			
         self.modem.close()
         
         
