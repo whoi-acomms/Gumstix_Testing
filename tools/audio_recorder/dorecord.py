@@ -8,9 +8,11 @@ There is a good reason we don't use the multiprocessing module.  Trust me.
 '''
 
 from time import sleep
-import subprocess,os
+import subprocess,os, statvfs
 from datetime import datetime
 import shutil
+from serial import Serial
+
 
 class DoRecord(object):
     '''
@@ -24,7 +26,7 @@ class DoRecord(object):
         self.slow_sleep_seconds = 600
         self.recordings_dir = '/home/acomms/recordings'
         self.ismount = False
-        
+        self.modem = Serial(port="/dev/ttyO1",baudrate=19200)
         self.running_process = None
         
     
@@ -63,11 +65,24 @@ class DoRecord(object):
         print("Running: " + commandstr)
         subprocess.call(commandstr, shell=True)
         shutil.move(tempfilename, (self.recordings_dir + '/' + timestr + '.wav'))
-    
+        self.SendModemMsg(timestr)
+
+
+
+    def SendModemMsg(self,timestr):
+        f = os.statvfs(self.recordings_dir)
+        totalSizeMB = (f[statvfs.F_BSIZE] * f[statvfs.F_BFREE]) / 1024/1024/1024
+
+        Msg = "$CCPAS,GSTX REC TMSTMP:"+timestr +" FREE: " +str(totalSizeMB)+"*"
+        self.modem.write(Msg)
+
+
+
         
     def __del__(self):
         if self.running_process != None:
             self.running_process.terminate()
+        self.modem.close()
         
         
 if __name__ == '__main__':
