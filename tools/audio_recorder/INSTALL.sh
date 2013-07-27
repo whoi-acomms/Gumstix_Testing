@@ -1,5 +1,9 @@
 #!/bin/bash -f
 
+#this handles installing the recording software.
+#Run configure to setup the location for the recordings if using secondary storage
+
+
 #Standard Variables
 INSTALL_DIR=/home/acomms/scripts
 CONTROL_FILE_DIR=/home/acomms/fromshore/
@@ -24,4 +28,4 @@ cp -af $SCRIPT_NAME $INSTALL_DIR/.
 echo "off" > $CONTROL_FILE
 
 #Install in Cron
-(crontab -l| grep -v $THIS_SCRIPT ; echo "@reboot python ${THIS_SCRIPT}") | uniq | crontab
+(crontab -l| grep -v $THIS_SCRIPT ; echo "@reboot /usr/bin/python ${THIS_SCRIPT}") | uniq | crontab

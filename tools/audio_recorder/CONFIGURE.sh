@@ -1,5 +1,7 @@
 #!/bin/bash -vf
 
+#This install the secondary drives as the primary location for recordings. 
+
 #Custom Variables
 RECORDINGS_DIR=/home/acomms/recordings
 STORAGE_LOCATION=/dev/mmcblk1p1
