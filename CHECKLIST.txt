@@ -1,0 +1,11 @@
+1) Install PPP (scripts\ppp)
+	a) Edit inittab to answer the phone!
+2) Configure Rsync Software
+	a) Modify syncfiles ONSHORE_LOC
+	b) Modify dialer.py LAST_OCTET
+3) Optional: Install Recorder Software
+	a) Modify configure.sh to install secondary storage options if wishes.
+4) Optional: Configure GPS to serve time
+5) Install Operational Scripts
+6) Optional: Disable Ethernet
+7) Fill out CONFIG_INFO and  save in /home/acomms directory.
