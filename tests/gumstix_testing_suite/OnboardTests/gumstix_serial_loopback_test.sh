@@ -18,4 +18,4 @@ then
 else
   echo "FAILED"
 fi
-#rm ser_test.txt
+rm ser_test.txt
