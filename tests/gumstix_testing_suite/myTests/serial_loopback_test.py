@@ -24,4 +24,5 @@ def serial_loopback(gtport):
             print 'failing'
             gt.fail([ser1])
         print 'passed on baudrate: %i' % baud
+        time.sleep(.5)
     print 'PASSED'

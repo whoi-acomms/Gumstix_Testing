@@ -42,7 +42,7 @@ def status(ser):
     #prompt data if none is coming
     ser.write('\r')
     #check if at login or logged in
-    stat = expect(ser, ['login:', '[$]', '[#]'], 6)
+    stat = expect(ser, ['login:', '[$]', '[#]'], 8)
     #timeout
     if stat == -1:
         #check data is flowing

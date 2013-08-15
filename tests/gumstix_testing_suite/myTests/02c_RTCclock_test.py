@@ -17,7 +17,9 @@ ser.write('date -s "%s"\r' % tstr)
 gt.expect(ser, ['[#]'], 5)
 #flush it
 ser.write('hwclock -w\r')
-gt.expect(ser, ['[#]'], 5)
+clockset = gt.expect(ser, ['Cannot access', '[#]'], 5)
+if not clockset:
+    gt.fail([ser])
 #reboot and login again
 ser.write('reboot\r')
 gt.login(ser)

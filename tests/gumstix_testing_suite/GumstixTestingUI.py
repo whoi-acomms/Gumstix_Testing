@@ -265,10 +265,10 @@ class TestingUI(Tk):
             self.proc = mp.Process(target=run_tests, args=(self.test_files, self.running,
                                                            self.queue, self.directory_name))
             self.proc.start()
-            #update the test list to show intermediary results
-            self.after_idle(self.refresh_test_list)
             #update the log to get realtime output
             self.after_idle(self.log_queue)
+            #update the test list to show intermediary results
+            self.after_idle(self.refresh_test_list)
 
     #Stops the current test process
     def stop_command(self):
@@ -285,26 +285,22 @@ class TestingUI(Tk):
 
     #Prints the results of the given test
     def print_results(self, test):
-        if self.running.value:
-            tkMessageBox.showwarning('Running Test', 'There is a test running, please wait for it to '
-                                                     'finish or stop the test before trying again.')
+        #Create a new popup windows with a scrollable frame of test results
+        self.top = Toplevel(self)
+        self.top.title('Results for %s' % test.filename)
+        self.scroll_results = VerticalScrolledFrame(self.top)
+        self.scroll_results.pack(fill=BOTH, expand=1)
+        header = '\n****RESULTS FOR TEST %s****\n' % test.filename
+        #generate the results text from the Dict of Test Files
+        self.result_text = Text(self.scroll_results.interior)
+        self.result_text.insert(END, header + self.test_files[test.tag].results)
+        self.result_text.tag_add('ResultHighlight', 'end -2 lines', 'end')
+        #Check if test passed or failed to color the PASSED/FAILED final line
+        if self.test_files[test.tag].passed:
+            self.result_text.tag_config('ResultHighlight', foreground='green')
         else:
-            #Create a new popup windows with a scrollable frame of test results
-            self.top = Toplevel(self)
-            self.top.title('Results for %s' % test.filename)
-            self.scroll_results = VerticalScrolledFrame(self.top)
-            self.scroll_results.pack(fill=BOTH, expand=1)
-            header = '\n****RESULTS FOR TEST %s****\n' % test.filename
-            #generate the results text from the Dict of Test Files
-            self.result_text = Text(self.scroll_results.interior)
-            self.result_text.insert(END, header + self.test_files[test.tag].results)
-            self.result_text.tag_add('ResultHighlight', 'end -2 lines', 'end')
-            #Check if test passed or failed to color the PASSED/FAILED final line
-            if self.test_files[test.tag].passed:
-                self.result_text.tag_config('ResultHighlight', foreground='green')
-            else:
-                self.result_text.tag_config('ResultHighlight', foreground='red')
-            self.result_text.pack(fill=BOTH, expand=1)
+            self.result_text.tag_config('ResultHighlight', foreground='red')
+        self.result_text.pack(fill=BOTH, expand=1)
 
 
     #Query for a directory and initialize TestFile containers from valid test files in the directory
@@ -356,7 +352,7 @@ class TestingUI(Tk):
     def refresh_test_list(self):
         #If a test is running, update this list again when idle (after a half second delay)
         if self.running.value:
-            self.after_idle(lambda: self.after(500, self.refresh_test_list))
+            self.after_idle(lambda: self.after(1000, self.refresh_test_list))
         rownum=1
         testlist = self.test_files.keys()
         testlist.sort()
