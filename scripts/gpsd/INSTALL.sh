@@ -18,7 +18,7 @@ dpkg-reconfigure gpsd
 #		Should gpsd handle attached USB GPS receivers automatically? 
 #			No
 #		Options to gpsd: 
-#			-b -n
+#			
 
 #To test gpsd
 killall gpsd
