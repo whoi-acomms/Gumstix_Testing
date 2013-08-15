@@ -19,6 +19,6 @@ def serial_loopback(gtport):
         #expect a result within 1.5 times the estimate
         sertest = gt.expect(ser1, ['PASSED', 'FAILED'], time_est*1.5)
         #if any baud fails or doesn't return within 1.5 times the estimate, failed test
-        if sertest == 1,-1:
+        if sertest == 1 | sertest == -1:
             gt.fail([ser1])
     print 'PASSED'
