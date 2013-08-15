@@ -1,0 +1,21 @@
+Another option is autofs instead of the configure
+To use:
+
+1)Install autofs
+	apt-get install autofs
+2)In /etc/autofs.master, uncomment out and change:
+	#/misc	/etc/auto.misc
+To	
+	/media	/etc/auto.misc
+Make sure there is an empty line on the end of template files (press ENTER after last word). If there is no correct EOF (end of file) line, the AutoFS daemon won't properly load.
+3)Add the following to /etc/auto.misc
+	sdcard          -fstype=auto,dev,exec,rw,users          :/dev/mmcblk1p1
+	usbdrive        -fstype=auto            :/dev/sda1
+Make sure there is an empty line on the end of template files (press ENTER after last word). If there is no correct EOF (end of file) line, the AutoFS daemon won't properly load.
+
+4) Add the following to /etc/nsswitch.conf
+	automount: files
+
+5)Restart autofs
+	/etc/init.d/autofs restart
+	
