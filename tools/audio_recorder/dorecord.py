@@ -63,7 +63,7 @@ class DoRecord(object):
     def make_recording(self):
         tempfilename = '/dev/shm/temp.wav'
         timestr = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-        commandstr = '/usr/bin/arecord -c 2 -B 30000000 -f S16_LE -d 300 -t wav -r 48000 {0}'.format(tempfilename)
+        commandstr = '/usr/bin/arecord -c 1 -B 30000000 -f S16_LE -d 300 -t wav -r 48000 {0}'.format(tempfilename)
         print("Running: " + commandstr)
         subprocess.call(commandstr, shell=True)
         shutil.move(tempfilename, (self.recordings_dir + '/' + timestr + '.wav'))
