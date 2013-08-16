@@ -40,21 +40,21 @@ finally:
 
 # rsync the data to shore
 logger.info("Starting rsync TO shore")
-os.system('rsync -zrv --progress --append --log-file=/var/log/rsync-out.log ' + outgoing_path + '/* 10.0.2.16::toshore/'+ ONSHORE_LOC)
+os.system('rsync -zrv --progress --append --log-file=/var/log/rsync-out.log ' + outgoing_path + '/* 10.0.2.16::'+ ONSHORE_LOC+ '/toshore/')
 
 # Get command files from shore
 logger.info("Starting rsync FROM shore")
-os.system('rsync -zru --append --progress --log-file=/var/log/rsync-in.log --delete 10.0.2.16::fromshore/'+ ONSHORE_LOC+ '* ' + incoming_path)
+os.system('rsync -zru --append --progress --log-file=/var/log/rsync-in.log --delete 10.0.2.16::'+ ONSHORE_LOC+ '/fromshore/* '+ incoming_path)
 
 #Do it again
 
 # rsync the data to shore
 logger.info("Starting rsync TO shore")
-os.system('rsync -zr --append --progress --log-file=/var/log/rsync-out.log ' + outgoing_path + '/* 10.0.2.16::toshore/'+ ONSHORE_LOC)
+os.system('rsync -zr --append --progress --log-file=/var/log/rsync-out.log ' + outgoing_path + '/* 10.0.2.16::'+ ONSHORE_LOC+ '/toshore/')
 
 # Get command files from shore
 logger.info("Starting rsync FROM shore")
-os.system('rsync -zru --append --progress --log-file=/var/log/rsync-in.log --delete 10.0.2.16::fromshore/'+ ONSHORE_LOC+ '* ' + incoming_path)
+os.system('rsync -zru --append --progress --log-file=/var/log/rsync-in.log --delete 10.0.2.16::'+ ONSHORE_LOC+ '/fromshore/* '+ incoming_path)
 
 
 # See if we got a script that we need to run
