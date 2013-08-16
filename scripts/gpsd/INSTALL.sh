@@ -30,7 +30,7 @@ gpspipe -r
 #Edit /etc/ntp.conf
 Add 
 	server 127.127.28.0 minpoll 4 prefer
-	fudge  127.127.28.0 refid NMEA
+	fudge  127.127.28.0 time1 0.420 refid GPS
 	#server 127.127.28.1 minpoll 4 prefer
 	#fudge  127.127.28.1 refid PPS
 Comment out:
