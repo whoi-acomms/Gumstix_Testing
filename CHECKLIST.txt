@@ -1,3 +1,4 @@
+0) Install pyacomms
 1) Install PPP (scripts\ppp)
 	a) Edit inittab to answer the phone!
 2) Configure Rsync Software
