@@ -18,7 +18,7 @@ dpkg-reconfigure gpsd
 #		Should gpsd handle attached USB GPS receivers automatically? 
 #			No
 #		Options to gpsd: 
-#			
+#			-n
 
 #To test gpsd
 killall gpsd
@@ -30,7 +30,7 @@ gpspipe -r
 #Edit /etc/ntp.conf
 Add 
 	server 127.127.28.0 minpoll 4 prefer
-	fudge  127.127.28.0 time1 0.183 refid NMEA
+	fudge  127.127.28.0 refid NMEA
 	#server 127.127.28.1 minpoll 4 prefer
 	#fudge  127.127.28.1 refid PPS
 Comment out:
@@ -44,5 +44,5 @@ Restart NTP
 ntpq -p
 
 #Add GPS_init to crontab
-@reboot /home/acomms/scripts/gps_init.sh
+#@reboot /home/acomms/scripts/gps_init.sh
 	
