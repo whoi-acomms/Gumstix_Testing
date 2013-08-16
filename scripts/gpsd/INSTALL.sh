@@ -19,6 +19,8 @@ dpkg-reconfigure gpsd
 #			No
 #		Options to gpsd: 
 #			-n
+#		GPSD control socket path:
+#			{leave as suggested}
 
 #To test gpsd
 killall gpsd
@@ -33,10 +35,7 @@ Add
 	fudge  127.127.28.0 time1 0.420 refid GPS
 	#server 127.127.28.1 minpoll 4 prefer
 	#fudge  127.127.28.1 refid PPS
-Comment out:
-	restrict 192.168.123.0  mask  255.255.255.0 notrust
-Add in its place.
-	restrict 192.168.1.0  mask  255.255.255.0 nomodify
+
 Restart NTP
 	/etc/init.d/ntp restart
 	
