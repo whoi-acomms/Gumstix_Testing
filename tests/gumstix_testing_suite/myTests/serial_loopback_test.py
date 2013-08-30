@@ -7,11 +7,11 @@ import time
 def serial_loopback(gtport):
     #open serial one and login
     ser1 = serial.Serial(port='COM7', baudrate=115200, timeout=1)
-    login = gt.login(ser1)
-    if not login:
-        gt.fail([ser1])
+    if not gt.login(ser1):
+        gt.fail(ser1)
     #list of baudrates to test
-    bauds=[4800, 9600, 19200, 115200, 460800]
+    #bauds=[4800, 9600, 19200, 115200]
+    bauds = [115200]
     for baud in bauds:
         #run the loopback test on the given port at the current baud
         ser1.write('tests/gumstix_serial_loopback_test.sh %s %i\r' % (gtport, baud))
@@ -22,7 +22,8 @@ def serial_loopback(gtport):
         #if any baud fails or doesn't return within 1.5 times the estimate, failed test
         if (sertest == 1) | (sertest == -1):
             print 'failing'
-            gt.fail([ser1])
-        print 'passed on baudrate: %i' % baud
+            gt.fail(ser1)
+        print 'pass on baudrate: %i' % baud
         time.sleep(.5)
+    ser1.close()
     print 'PASSED'

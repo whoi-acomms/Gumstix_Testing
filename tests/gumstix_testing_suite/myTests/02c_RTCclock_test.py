@@ -8,7 +8,7 @@ import datetime, time
 ser =serial.Serial(port='COM7', baudrate='115200', timeout=1)
 #login
 if not gt.login(ser):
-    gt.fail([ser])
+    gt.fail(ser)
 #get the UTC time and convert to a usable string
 t=datetime.datetime.utcnow()
 tstr = t.strftime('%d %b %Y %H:%M:%S')
@@ -19,7 +19,7 @@ gt.expect(ser, ['[#]'], 5)
 ser.write('hwclock -w\r')
 clockset = gt.expect(ser, ['Cannot access', '[#]'], 5)
 if not clockset:
-    gt.fail([ser])
+    gt.fail(ser)
 #reboot and login again
 ser.write('reboot\r')
 gt.login(ser)
@@ -38,6 +38,6 @@ ser.write('date +%s\r')
 #compare output with expected
 clock = gt.expect(ser, trange, 5)
 if clock == -1:
-    gt.fail([ser])
+    gt.fail(ser)
 ser.close()
 print 'PASSED'

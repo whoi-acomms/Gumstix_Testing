@@ -14,7 +14,7 @@ def expect(ser, keys, tout=0):
     last_line_ind = 0 #start at the first char
     start = time.clock() #reference pt for timeout
     buff =''
-    buff += ser.read(128)
+    buff += ser.read(128).decode('utf-8')
     #while not timed out and the keyword has not been found
     while (time.clock() - start) < tout or tout == 0:
         #check the keys in order, return the index in the list if a match is found
@@ -28,7 +28,7 @@ def expect(ser, keys, tout=0):
         if newline:
             print buff[last_line_ind:newline.start(0)]
             last_line_ind = newline.end(0)
-        buff += ser.read(128)
+        buff += ser.read(128).decode('utf-8')
     print buff[last_line_ind:]
     #timeout
     return -1
@@ -36,8 +36,8 @@ def expect(ser, keys, tout=0):
 #checks the status of the gumstix board, returns -1, 0 or 1 for error, at login, or logged in respectively
 def status(ser):
     #check if any data is flowing
-    if expect(ser, ['\w'], 10) != -1:
-        login = expect(ser, ['login:'], 150)
+    if expect(ser, ['\w'], 6) != -1:
+        login = expect(ser, ['login:'], 180)
         return login
     #prompt data if none is coming
     ser.write('\r')
@@ -46,10 +46,10 @@ def status(ser):
     #timeout
     if stat == -1:
         #check data is flowing
-        data = expect(ser, ['\w'], 5)
+        data = expect(ser, ['\w'], 7)
         if data == 0:
             #if there is data, wait 2.5 mins to get to login
-            login = expect(ser, ['login:'], 150)
+            login = expect(ser, ['login:'], 180)
             return login
         return -1
     elif stat == 1:
@@ -90,8 +90,7 @@ def login(ser):
     return 1
 
 #convenience function for failing a test, closing serial ports, and exiting
-def fail(serials=[]):
-    for ser in serials:
-        ser.close()
+def fail(ser):
+    ser.close()
     print 'FAILED'
     sys.exit()

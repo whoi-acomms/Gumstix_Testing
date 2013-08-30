@@ -14,19 +14,19 @@ from time import sleep
 
 #Just a container to hold information specific to each Test
 class TestFile():
-    def __init__(self, filename, tag, dep_list, wasrun, run, passed, results):
+    def __init__(self, filename, tag, dep_list, wasrun, will_be_run, passed, results):
         #name of the test file
         self.filename = filename
         #Priority tag (i.e. 00a)
         self.tag = tag
         #list of dependencies (by tag, 00a, 00b, etc)
         self.dep_list = dep_list
-        #did the test pass
+        #did the test pass (bool)
         self.passed = passed
-        #was the test run
+        #was the test run (bool)
         self.wasrun = wasrun
-        #should the test be run
-        self.run = run
+        #should the test be run (int 0 or 1)
+        self.will_be_run = will_be_run
         #string of test output
         self.results = results
 
@@ -107,13 +107,13 @@ def run_tests(tests, running, q_out, dir_name):
         runtest = True
         #check the dependencies have been run and passed
         for dep in test.dep_list:
-            if not tests[dep].run or not tests[dep].passed:
+            if not tests[dep].passed:
                 runtest = False
                 q_out.put('Dependency %s for test %s not met, '
                           'ignoring test...\n' % (dep, test.filename))
                 break
         #skip test if deps not met or if this test is not marked for execution
-        if not runtest or not test.run:
+        if not runtest or not test.will_be_run:
             continue
 
         runcount += 1
@@ -121,7 +121,8 @@ def run_tests(tests, running, q_out, dir_name):
         #build the full path to the file
         filepath = os.path.join(dir_name, test.filename)
         q_out.put('Running test file %s...\n' % test.filename)
-
+        test.passed = False
+        tests[test.tag] = test
         #Spawn a child process to execute the file with python *insert child labor joke*
         cmd = [sys.executable, filepath]
         testrunner = sp.Popen(cmd, stdout=sp.PIPE, stderr=sp.STDOUT, bufsize=1)
@@ -170,7 +171,7 @@ def run_tests(tests, running, q_out, dir_name):
                 elif line == 'FAILED\n':
                     test.passed = False
             test.wasrun = True
-        #IMPORTANT STEP, set the proc-safe dict to point to our locally test object
+        #IMPORTANT STEP, set the proc-safe dict to point to our local test object
         tests[test.tag] = test
     #tests done
     running.value = 0
@@ -190,6 +191,21 @@ class TestingUI(Tk):
         #if there is a test running or the queue isn't empty yet, call this again until both conditions are met
         if self.running.value or not self.queue.empty():
             self.after_idle(lambda: self.after(0, self.log_queue))
+        #Refresh test listing only if a test has been updated
+        testlist = self.test_files_dict.keys()
+        testlist.sort()
+        refresh = False
+        for ind, key in enumerate(testlist):
+            runbool = self.test_files_dict[key].wasrun
+            if len(self.oldrunlist) == len(testlist):
+                if self.oldrunlist[ind] != runbool:
+                    refresh = True
+                    self.oldrunlist[ind] = runbool
+            else:
+                self.oldrunlist.append(runbool)
+                refresh = True
+        if refresh:
+            self.after_idle(lambda: self.after(0, self.refresh_test_list))
 
     #Writes the message into the log file
     def write_to_log(self, message):
@@ -230,28 +246,28 @@ class TestingUI(Tk):
         #no test running
         else:
             #toggle the run value
-            tfile = self.test_files[test]
-            tfile.run = var.get()
-            self.test_files[test] = tfile
+            tfile = self.test_files_dict[test]
+            tfile.will_be_run = var.get()
+            self.test_files_dict[test] = tfile
             #if this was turned on, turn on its dependencies
             if var.get():
                 for tag in tfile.dep_list:
-                    if not self.test_files[tag].run == var.get():
+                    if (not self.test_files_dict[tag].will_be_run == var.get()) and not self.test_files_dict[tag].passed:
                         self.checkdict[tag].invoke()
             #if this was turned off, turn off its dependents
             else:
                 #important to assign TestFiles at each iteration, not all before or you end up
                 #with desynched recursive calls
-                keys = self.test_files.keys()
+                keys = self.test_files_dict.keys()
                 for key in keys:
-                    testfile = self.test_files[key]
-                    if test in testfile.dep_list and not testfile.run == var.get():
+                    testfile = self.test_files_dict[key]
+                    if (test in testfile.dep_list) and ((testfile.will_be_run != var.get()) and not self.test_files_dict[test].passed):
                         self.checkdict[testfile.tag].invoke()
 
     #Starts a new test process
     def start_command(self):
         #check that there are tests to run
-        if not self.test_files:
+        if not self.test_files_dict:
             tkMessageBox.showwarning('No Test Directory', 'There is no test directory selected, please select '
                                                           'a directory before trying again.')
         #check a test is not already running
@@ -261,8 +277,17 @@ class TestingUI(Tk):
         else:
             self.write_to_log('Starting...\n')
             self.running.value = 1
+            #reset tests that are about to be run
+            testlist = self.test_files_dict.keys()
+            testlist.sort()
+            for tag in testlist:
+                test = self.test_files_dict[tag]
+                if test.will_be_run:
+                    test.wasrun = False
+                    test.passed = False
+                    self.test_files_dict[tag] = test
             #start a process running to execute all tests
-            self.proc = mp.Process(target=run_tests, args=(self.test_files, self.running,
+            self.proc = mp.Process(target=run_tests, args=(self.test_files_dict, self.running,
                                                            self.queue, self.directory_name))
             self.proc.start()
             #update the log to get realtime output
@@ -293,10 +318,10 @@ class TestingUI(Tk):
         header = '\n****RESULTS FOR TEST %s****\n' % test.filename
         #generate the results text from the Dict of Test Files
         self.result_text = Text(self.scroll_results.interior)
-        self.result_text.insert(END, header + self.test_files[test.tag].results)
+        self.result_text.insert(END, header + self.test_files_dict[test.tag].results.decode('utf-8'))
         self.result_text.tag_add('ResultHighlight', 'end -2 lines', 'end')
         #Check if test passed or failed to color the PASSED/FAILED final line
-        if self.test_files[test.tag].passed:
+        if self.test_files_dict[test.tag].passed:
             self.result_text.tag_config('ResultHighlight', foreground='green')
         else:
             self.result_text.tag_config('ResultHighlight', foreground='red')
@@ -340,7 +365,7 @@ class TestingUI(Tk):
                 if deps[0] == '':
                     deps = []
                 #build a TestFile and put it in the dict of test files, key= priority tag
-                self.test_files[filename[:3]] = TestFile(filename, filename[:3], deps, False, 0, False,
+                self.test_files_dict[filename[:3]] = TestFile(filename, filename[:3], deps, False, 0, False,
                                                             'Test ' + filename[:3] + ' has not been run yet.')
                 file.close()
             except IOError:
@@ -350,11 +375,8 @@ class TestingUI(Tk):
 
     #Refresh the list of test files widgets from the dict of Test Files
     def refresh_test_list(self):
-        #If a test is running, update this list again when idle (after a half second delay)
-        if self.running.value:
-            self.after_idle(lambda: self.after(1000, self.refresh_test_list))
         rownum=1
-        testlist = self.test_files.keys()
+        testlist = self.test_files_dict.keys()
         testlist.sort()
         #Remove the old widgets from the grid
         for widg in self.checkbuttons:
@@ -379,11 +401,11 @@ class TestingUI(Tk):
 
         #Build a row of widgets for each test file
         for test in testlist:
-            tf = self.test_files[test]
+            tf = self.test_files_dict[test]
             Grid.rowconfigure(self.file_frame.interior, rownum, weight=1)
 
             #checkboxes
-            self.checkvars.append(IntVar(value=tf.run))
+            self.checkvars.append(IntVar(value=tf.will_be_run))
             self.checkbuttons.append(Checkbutton(self.file_frame.interior, variable=self.checkvars[-1],
                                                  command=lambda tag=tf.tag, var=self.checkvars[-1]:
                                                  self.toggle_test(var, tag)))
@@ -441,18 +463,23 @@ class TestingUI(Tk):
             elif val:
                 #copy logfile to the file given by the saveas dialog
                 filename = tkFileDialog.asksaveasfilename(defaultextension='.txt')
-                file = os.path.join(os.getcwd(), filename)
-                shutil.copy('stdout.txt', file)
+                logfile = os.path.join(os.getcwd(), filename)
+                shutil.copy('stdout.txt', logfile)
             #simply close and destroy the logfile
             #On windows, os.remove will fail due to a file lock from a subprocess
             #that I haven't been able to track down
             self.logfile.close()
             os.remove('stdout.txt')
+            if self.proc and self.proc.is_alive():
+                self.proc.terminate()
             self.quit()
         except:
+            if self.proc and self.proc.is_alive():
+                self.proc.terminate()
             self.quit()
 
     def __init__(self, *args, **kwargs):
+        self.proc = None
         #open the logfile
         self.logfile = open('stdout.txt', 'w+')
 
@@ -462,7 +489,12 @@ class TestingUI(Tk):
         #instantiate the test files dict and stdout queue (shared state in processes)
         self.manager = mp.Manager()
         self.queue = mp.Queue()
-        self.test_files = self.manager.dict()
+        manager_dict = self.manager.dict()
+        self.test_files_dict = manager_dict
+
+        #create a list to hold the old value of test.run for each testfile.
+        # This is used to check if refresh_test_list needs to execute or not
+        self.oldrunlist = []
 
         #instantiate the thread-safe value that signals running or not (0-false, 1-true)
         self.running = mp.Value('i', 0)
