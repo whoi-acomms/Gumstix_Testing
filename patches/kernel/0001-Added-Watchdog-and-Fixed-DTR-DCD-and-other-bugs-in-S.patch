@@ -1,0 +1,554 @@
+From c5acde1b63eca19d59fd962e4756f16aa5cc3a6d Mon Sep 17 00:00:00 2001
+From: Andrew Beal <abeal@whoi.edu>
+Date: Mon, 26 Nov 2012 20:51:53 -0500
+Subject: [PATCH] Added Watchdog and Fixed DTR, DCD and other bugs in Sc16X
+ driver.
+
+---
+ drivers/gpio/whoifpga_gpio.c   | 278 +++++++++++++++++++++++++++++++++++------
+ drivers/tty/serial/sc16is7x2.c |  45 +++++++
+ include/linux/gpio_whoifpga.h  |  49 +++++++-
+ 3 files changed, 332 insertions(+), 40 deletions(-)
+
+diff --git a/drivers/gpio/whoifpga_gpio.c b/drivers/gpio/whoifpga_gpio.c
+index 48b7c88..fbb46ce 100644
+--- a/drivers/gpio/whoifpga_gpio.c
++++ b/drivers/gpio/whoifpga_gpio.c
+@@ -25,44 +25,97 @@
+ #include <linux/platform_device.h>
+ 
+ #include <linux/gpio.h>
++#include <linux/watchdog.h>
+ #include <linux/gpio_whoifpga.h>
+ 
++#define WHOIFPGA_DEBUG 1
++
++//Define the Hardware Spin Lock
+ static DEFINE_SPINLOCK(gpio_lock);
+ 
+-/*
+- * Map the Version API Registers so the driver can load them at initialization time.
+- */
++//GPIO Data
++void __iomem *fpga_base;
+ 
+-#define FPGA_API_LEVEL (0x00) //0x00
+-#define FPGA_VER_MAJOR (0x02) //0x01
+-#define FPGA_VER_MILE  (0x04) //0x02
+-#define FPGA_VER_MINOR (0x06) //0x03
+-#define FPGA_VER_DEVEL (0x08) //0x04
+-#define FPGA_VER_FLAG  (0x0A) //0x05
++//HW Verification Function
++static int whoifpga_hw_verification(struct platform_device *pdev)
++{
++	u16 err = 0;
++	u16 magic1, magic2;
++	u16 test1, test2;
++	u16 test3_1, test3_2;
++	u16 addrtest1, addrtest2;
+ 
+-/*
+- * Define the Magic Number registers for Verification of Hardware
+- */
+-#define MAGIC1	       (0x20) //0x010
+-#define MAGIC2	       (0x22) //0x011
++	spin_lock(&gpio_lock);
+ 
+-/*
+- * Define the Fixed Hibernate Register
+- */
+-#define HIBERNATE	(0x2A) //0x15
++	//Verify Magic Numbers
++	magic1 = __raw_readw(fpga_base + MAGIC1);
++	if (magic1 != 0x4572)
++	{
++		dev_err(&pdev->dev, "WHOI FPGA MAGIC1 Mismatch: expected 0x4572, %x\n", magic1);
++		err +=1;
+ 
+-/*
+- * Map to the Ctrl Register in the FPGA
+- */
+-#define IO_CTRL_BASE	(0x42) //0x21
++	}
+ 
+-/*
+- * Map to the Status Register in the FPGA
+- */
+-#define IO_CTRL_STATUS	(0xC2) //0x61
++	magic2 = __raw_readw(fpga_base + MAGIC2);
++	if (magic2 != 0x6963)
++	{
++		dev_err(&pdev->dev, "WHOI FPGA MAGIC2 Mismatch: expected 0x6963, %x\n", magic2);
++		err +=2;
++	}
+ 
+-void __iomem *fpga_base;
+ 
++#ifdef WHOIFPGA_DEBUG
++	//Test Data Bus
++	test1  = __raw_readw(fpga_base + TEST1);
++	if (test1 != 0xa5a5)
++	{
++		dev_err(&pdev->dev, "WHOI FPGA DATA BUS TEST1 Mismatch: expected 0xA5A5, %x\n", test1);
++		err +=4;
++	}
++	test2  = __raw_readw(fpga_base + TEST2);
++	if (test2 != 0x5a5a)
++	{
++		dev_err(&pdev->dev, "DATA BUS TEST2 Mismatch: expected 0x5A5A, %x\n", test2);
++		err +=8;
++	}
++
++	//Test for Floating Bits
++	__raw_writew(0xFFFF,fpga_base + TEST3);
++	test3_1  = __raw_readw(fpga_base + TEST3);
++	if (test3_1 != 0x0000)
++	{
++		dev_err(&pdev->dev, "WHOI FPGA FLOATING BIT TEST1 Mismatch: expected 0x0000l, %x\n", test3_1);
++		err +=16;
++	}
++	
++	__raw_writew(0x0000,fpga_base + TEST3);
++	test3_2  = __raw_readw(fpga_base + TEST3);
++	if (test3_2 != 0xFFFF)
++	{
++		dev_err(&pdev->dev, "WHOI FPGA FLOATING BIT TEST1 Mismatch: expected 0xFFFF, %x\n", test3_1);
++		err +=32;
++	}
++	
++	//Test for Bad Address Lines
++	addrtest1 = __raw_readw(fpga_base + ADDRTEST1);
++	if (addrtest1 != 0xAD01)
++	{
++		dev_err(&pdev->dev, "WHOI FPGA ADDRESS BUS TEST1 Mismatch: expected 0xAD01, %x\n", addrtest1);
++		err +=64;
++	}
++
++	addrtest2 = __raw_readw(fpga_base + ADDRTEST2);
++	if (addrtest2 != 0xAD02)
++	{
++		dev_err(&pdev->dev, "WHOI FPGA ADDRESS BUS TEST2 Mismatch: expected 0xAD02, %x\n", addrtest2);
++		err +=128;
++	}
++#endif
++	spin_unlock(&gpio_lock);
++	return err;
++}
++
++// GPIO Functions
+ static int whoifpga_gpio_direction_in(struct gpio_chip *gc, unsigned  gpio_num)
+ {
+ 	void __iomem *reg = fpga_base;
+@@ -141,42 +194,182 @@ static struct gpio_chip whoifpga_gpio = {
+ 	.set			= whoifpga_gpio_set,
+ };
+ 
++//Watchdog Functions
++
++static int whoifpga_wd_start(struct watchdog_device * wd)
++{
++	void __iomem *reg = fpga_base;
++	u16 dat;
++
++	spin_lock(&gpio_lock);
++
++	reg += WATCHDOG_ENABLE;
++
++	dat = 0x0001;
++
++	__raw_writew(dat, reg);
++	spin_unlock(&gpio_lock);
++
++	return 0;
++}
++
++static int whoifpga_wd_stop(struct watchdog_device * wd)
++{
++	void __iomem *reg = fpga_base;
++	u16 dat;
++
++	spin_lock(&gpio_lock);
++
++	reg += WATCHDOG_ENABLE;
++
++	dat = 0x0000;
++
++	__raw_writew(dat, reg);
++	spin_unlock(&gpio_lock);
++
++	return 0;
++}
++
++static int whoifpga_wd_kick(struct watchdog_device * wd)
++{
++	void __iomem *reg = fpga_base;
++	u16 dat;
++
++	spin_lock(&gpio_lock);
++
++	reg += WATCHDOG_KICK;
++
++	dat = 0x0001;
++
++	__raw_writew(dat, reg);
++	spin_unlock(&gpio_lock);
++
++	return 0;
++}
++/* Future Proofing
++static int whoifpga_wd_get_timeleft(struct watchdog_device * wd)
++{
++	void __iomem *reg = fpga_base;
++	u16 time_elapsed, timeout;
++
++	spin_lock(&gpio_lock);
++
++	reg += WATCHDOG_TIME;
++
++	time_elapsed = __raw_readw(reg) ;
++
++	reg= fpga_base + WATCHDOG_INTERVAL;
++
++	timeout = __raw_readw(reg);
++
++	return timeout - time_elapsed;
++}
++*/
++static int whoifpga_wd_set_timeout(struct watchdog_device * wd, unsigned int t)
++{
++	void __iomem *reg = fpga_base;
++	u16 dat;
++
++	spin_lock(&gpio_lock);
++
++	reg += WATCHDOG_INTERVAL;
++	
++	//Mask off higher bits and set the timeout
++	dat = t & 0xFFF;
++
++	__raw_writew(dat, reg);
++	spin_unlock(&gpio_lock);
++
++	wd->timeout = dat;
++	
++	return 0;
++}
++
++const struct watchdog_info whoifpga_wd_info = {
++	.identity = "WHOI FPGA Watchdog",
++	.options = WDIOF_SETTIMEOUT | WDIOF_MAGICCLOSE | WDIOF_KEEPALIVEPING,
++};
++
++static struct watchdog_ops whoifpga_wd_ops = {
++	.owner 			= THIS_MODULE,
++	.start			= whoifpga_wd_start,
++	.stop			= whoifpga_wd_stop,
++	.ping			= whoifpga_wd_kick,
++	.set_timeout		= whoifpga_wd_set_timeout,
++// Future Proofing
++//	.get_timeleft		= whoifpga_wd_get_timeleft,
++};
++
++//Watchdog Data
++static struct watchdog_device whoifgpa_wd = {
++	.info 			= &whoifpga_wd_info,
++	.ops			= &whoifpga_wd_ops,
++	.min_timeout		= 3,
++	.max_timeout		= 4094,
++};
++
++
+ static int __devinit whoifpga_gpio_probe(struct platform_device *pdev)
+ {
+ 	struct whoifpga_platform_data *pdata;
+ 	int err;
+ 	u16 api, major, minor, mile, devel;
+ 	char flag;
+-	u16 magic1, magic2;
++
+ 	char version_string[26];
+ 
++#ifdef WHOIFPGA_DEBUG
++	dev_info(&pdev->dev, "Initializing WHOI FPGA Driver\n");
++#endif
++
+ 	pdata = pdev->dev.platform_data;
+ 	if (!pdata || !pdata->gpio_base || !pdata->fpga_base_address) {
+-		dev_dbg(&pdev->dev, "incorrect or missing platform data\n");
++		dev_err(&pdev->dev, "incorrect or missing platform data\n");
+ 		return -EINVAL;
+ 	}
+ 
+ 	/* Static mapping, never released */
+ 	fpga_base = ioremap(pdata->fpga_base_address, 1024);
+ 	if (!fpga_base) {
+-		dev_dbg(&pdev->dev, "Could not ioremap fpga_base\n");
++		dev_err(&pdev->dev, "Could not ioremap fpga_base\n");
+ 		goto err_whoifpga_gpio;
+ 	}
+ 
++	//GPIO Configuration
+ 	whoifpga_gpio.base = pdata->gpio_base;
+ 	whoifpga_gpio.ngpio = WHOIFPGA_NR_GPIOS;
+ 	whoifpga_gpio.dev = &pdev->dev;
+ 
+ 	err = gpiochip_add(&whoifpga_gpio);
+ 	if (err < 0)
++	{
++		dev_err(&pdev->dev, "WHOI FPGA: gpiochip_add failed: %d", err);
+ 		goto err_whoifpga_gpio;
++	}
+ 
+-	//Lets check the magic numbers
+-	magic1 = __raw_readw(fpga_base + MAGIC1);
+-	magic2 = __raw_readw(fpga_base + MAGIC2);
+-	if (magic1 != magic2)
++	err = whoifpga_hw_verification(pdev);
++#ifndef WHOIFPGA_DEBUG
++	if(err != 0)
++	{
++
++		goto err_whoifpga_gpio;
++
++	}
++#endif
++
++	//Watchdog Configuration
++	//Read our timeout from the chip
++	whoifgpa_wd.timeout = __raw_readw(fpga_base + WATCHDOG_INTERVAL) & 0xFFF;
++
++	//Register our watchdog with the Kernel Subsystems.
++	err = watchdog_register_device(&whoifgpa_wd);
++	if(err)
++	{
++		dev_err(&pdev->dev, "WHOI FPGA: watchdog_register_device failed: %d", err);
+ 		goto err_whoifpga_gpio;
+ 
++	}
++
+ 	//Let's Read the Current Version info of the FPGA API.
+ 	api = __raw_readw(fpga_base + FPGA_API_LEVEL);
+ 	major = __raw_readw(fpga_base + FPGA_VER_MAJOR);
+@@ -201,27 +394,34 @@ static int __devinit whoifpga_gpio_probe(struct platform_device *pdev)
+ 	dev_info(&pdev->dev, "WHOI FPGA(Version %s) at 0x%08x, %d GPIO's based at %d\n", version_string,
+ 		pdata->fpga_base_address, WHOIFPGA_NR_GPIOS, whoifpga_gpio.base);
+ 
++	//Print Info about the WD
++	dev_info(&pdev->dev, "WHOI FPGA WD(Version %s) with timeout:%d\n", version_string, whoifgpa_wd.timeout);
++
+ 	return 0;
+ 
+ err_whoifpga_gpio:
+ 	fpga_base = 0;
+ 
+ 	return err;
++
+ }
+ 
+ static int __devexit whoifpga_gpio_remove(struct platform_device *pdev)
+ {
+-	if (fpga_base) {
++	if (fpga_base) 
++	{
+ 		int err;
+ 
++		//GPIO Handling
+ 		err  = gpiochip_remove(&whoifpga_gpio);
+ 		if (err)
+ 			dev_err(&pdev->dev, "%s failed, %d\n",
+ 				"gpiochip_remove()", err);
+ 
+-		fpga_base = 0;
++		//Watchdog Handling
++		watchdog_unregister_device(&whoifgpa_wd);
+ 
+-		return err;
++		fpga_base = 0;
+ 	}
+ 
+ 	return 0;
+@@ -250,6 +450,6 @@ module_init(whoifpga_gpio_init);
+ module_exit(whoifpga_gpio_exit);
+ 
+ MODULE_AUTHOR("Steve Sakoman <steve@sakoman.com>");
+-MODULE_DESCRIPTION("GPIO interface for WHOI FPGA");
++MODULE_DESCRIPTION("GPIO and Watchdog interface for WHOI FPGA");
+ MODULE_LICENSE("GPL");
+-MODULE_ALIAS("platform:whoifpga_gpio");
++MODULE_ALIAS("platform:whoifpga");
+diff --git a/drivers/tty/serial/sc16is7x2.c b/drivers/tty/serial/sc16is7x2.c
+index e96c410..bb9bbcd 100644
+--- a/drivers/tty/serial/sc16is7x2.c
++++ b/drivers/tty/serial/sc16is7x2.c
+@@ -49,6 +49,14 @@
+ #define IOC_GPIO74	0x02	/* GPIO 7:4 unset: as IO, set: as modem pins */
+ #define IOC_IOLATCH	0x01	/* Unset: input unlatched, set: input latched */
+ 
++/* Bit Settings for Modem Control Register */
++#ifdef UART_MCR_TCRTLR
++#undef UART_MCR_TCRTLR
++#define UART_MCR_TCRTLR			0x04	/* Enable / Disable TCR and TLR Register */
++#endif
++#define UART_MCR_IRDA_MODE		0x40	/* Enable / Disable IrDA Mode */
++
++
+ struct sc16is7x2_chip;
+ 
+ /*
+@@ -299,6 +307,7 @@ static void sc16is7x2_handle_regs(struct sc16is7x2_chip *ts, unsigned ch)
+ static void sc16is7x2_read_status(struct sc16is7x2_chip *ts, unsigned ch)
+ {
+ 	struct sc16is7x2_channel *chan = &(ts->channel[ch]);
++	struct uart_port *uart = &chan->uart;
+ /*	struct spi_message m;
+ 	struct spi_transfer t;
+ 	u8 *buf = chan->buf; */
+@@ -330,6 +339,21 @@ static void sc16is7x2_read_status(struct sc16is7x2_chip *ts, unsigned ch)
+ 	dev_dbg(&ts->spi->dev, " %s ier=0x%02x iir=0x%02x msr=0x%02x lsr=0x%02x\n",
+ 			__func__, buf[17], buf[18], buf[19], buf[20]);
+ */
++
++	/* Handle Change in DCD */
++	if (chan->msr & UART_MSR_DDCD)
++			uart_handle_dcd_change(uart, chan->msr & UART_MSR_DCD);
++	/* Handle Change in CTS */
++	if (chan->msr & UART_MSR_DCTS)
++			uart_handle_cts_change(uart, chan->msr & UART_MSR_CTS);
++
++	/* Handle Change in RI */
++	if (chan->msr & UART_MSR_TERI)
++			uart->icount.rng++;
++
++	/* Handle Change in DSR */
++	if (chan->msr & UART_MSR_DDSR)	
++			uart->icount.dsr++;
+ }
+ 
+ static void sc16is7x2_handle_channel(struct work_struct *w)
+@@ -433,10 +457,18 @@ static void sc16is7x2_set_mctrl(struct uart_port *port, unsigned int mctrl)
+ 	 */
+ 	if (mctrl & TIOCM_DTR)
+ 		 chan->mcr |= UART_MCR_DTR;
++	else
++		 chan->mcr &= ~UART_MCR_DTR;
++
+ 	if (mctrl & TIOCM_RTS)
+ 		 chan->mcr |= UART_MCR_RTS;
++	else
++		 chan->mcr &= ~UART_MCR_RTS;
++
+ 	if (mctrl & TIOCM_LOOP)
+ 		 chan->mcr |= UART_MCR_LOOP;
++	else
++		 chan->mcr &= ~UART_MCR_LOOP;
+ 
+ 	chan->handle_regs = true;
+ 	/* Trigger work thread for doing the actual configuration change */
+@@ -609,10 +641,18 @@ sc16is7x2_set_termios(struct uart_port *port, struct ktermios *termios,
+ 
+ 	if (termios->c_cflag & CSTOPB)
+ 		lcr |= UART_LCR_STOP;
++	else
++		lcr &= ~UART_LCR_STOP;
++
+ 	if (termios->c_cflag & PARENB)
+ 		lcr |= UART_LCR_PARITY;
++	else
++		lcr &= ~UART_LCR_PARITY;
++
+ 	if (!(termios->c_cflag & PARODD))
+ 		lcr |= UART_LCR_EPAR;
++	else
++		lcr &= ~UART_LCR_EPAR;
+ #ifdef CMSPAR
+ 	if (termios->c_cflag & CMSPAR)
+ 		lcr |= UART_LCR_SPAR;
+@@ -627,6 +667,7 @@ sc16is7x2_set_termios(struct uart_port *port, struct ktermios *termios,
+ 
+ 	chan->efr = UART_EFR_ECB;
+ 	chan->mcr |= UART_MCR_RTS;
++
+ 	if (termios->c_cflag & CRTSCTS)
+ 		chan->efr |= UART_EFR_CTS | UART_EFR_RTS;
+ 
+@@ -889,6 +930,7 @@ static struct uart_driver sc16is7x2_uart_driver;
+ static int sc16is7x2_register_gpio(struct sc16is7x2_chip *ts,
+ 		struct sc16is7x2_platform_data *pdata)
+ {
++
+ #ifdef CONFIG_GPIOLIB
+ 	ts->gpio.label = (pdata->label) ? pdata->label : DRIVER_NAME;
+ 	ts->gpio.request	= sc16is7x2_gpio_request;
+@@ -920,6 +962,9 @@ static int sc16is7x2_register_gpio(struct sc16is7x2_chip *ts,
+ 
+ 	return gpiochip_add(&ts->gpio);
+ #else
++	//Disable GPIOs 
++	u8 io_control = IOC_GPIO30 | IOC_GPIO74;
++	sc16is7x2_write(ts, REG_IOC, 0, io_control);
+ 	return 0;
+ #endif
+ }
+diff --git a/include/linux/gpio_whoifpga.h b/include/linux/gpio_whoifpga.h
+index 99a815b..c890cb7 100644
+--- a/include/linux/gpio_whoifpga.h
++++ b/include/linux/gpio_whoifpga.h
+@@ -1,7 +1,54 @@
+ #ifndef LINUX_GPIO_WHOIFPGA_H
+ #define LINUX_GPIO_WHOIFPGA_H
+ 
+-#define WHOIFPGA_NR_GPIOS 11
++//Define Max Number of GPIO Pins
++#define WHOIFPGA_NR_GPIOS 17
++
++/*
++ * Map the Version API Registers so the driver can load them at initialization time.
++ */
++
++#define FPGA_API_LEVEL (0x00) //0x00
++#define FPGA_VER_MAJOR (0x02) //0x01
++#define FPGA_VER_MILE  (0x04) //0x02
++#define FPGA_VER_MINOR (0x06) //0x03
++#define FPGA_VER_DEVEL (0x08) //0x04
++#define FPGA_VER_FLAG  (0x0A) //0x05
++
++/*
++ * Define the Magic Number registers for Verification of Hardware
++ */
++#define MAGIC1	       (0x20) //0x010
++#define MAGIC2	       (0x22) //0x011
++#define TEST1	       (0x24) //0x012
++#define TEST2	       (0x26) //0x013
++#define TEST3	       (0x28) //0x014
++
++#define ADDRTEST1	(0x4AA) //0x255
++#define ADDRTEST2	(0x354) //0x1AA
++
++/*
++ * Define the Fixed Hibernate Register
++ */
++#define HIBERNATE	(0x2A) //0x15
++
++/* 
++ * Watchdog Registers
++ */
++#define WATCHDOG_KICK		(0x80) //0x040
++#define WATCHDOG_ENABLE		(0x82) //0x041
++#define WATCHDOG_INTERVAL	(0x84) //0x042
++#define WATCHDOG_TIME		(0x86) //0x043
++
++/*
++ * Map to the Ctrl Register in the FPGA
++ */
++#define IO_CTRL_BASE	(0x42) //0x21
++
++/*
++ * Map to the Status Register in the FPGA
++ */
++#define IO_CTRL_STATUS	(0xC2) //0x61
+ 
+ struct whoifpga_platform_data {
+ 	unsigned	gpio_base;
+-- 
+1.8.3.msysgit.0
+

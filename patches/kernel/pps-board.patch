@@ -1,0 +1,53 @@
+diff --git a/arch/arm/mach-omap2/board-overo.c b/arch/arm/mach-omap2/board-overo.c
+index a6f522f..8b8b3b5 100644
+--- a/arch/arm/mach-omap2/board-overo.c
++++ b/arch/arm/mach-omap2/board-overo.c
+@@ -767,6 +767,40 @@ static inline void __init overo_init_musb(void)
+ static inline void __init overo_init_musb(void) { return; }
+ #endif
+ 
++#if defined(CONFIG_PPS_CLIENT_GPIO) 
++#include <linux/pps-gpio.h>
++
++/* PPS-GPIO platform data */
++static struct pps_gpio_platform_data pps_gpio_info = {
++ .assert_falling_edge = false,
++ .capture_clear = false,
++ .gpio_pin=186,
++ .gpio_label="EXT GPS PPS",
++};
++
++static struct platform_device ext_pps_gpio_device = {
++	.name = "pps-gpio",
++	.id = -1,
++	.dev = {
++		.platform_data = &pps_gpio_info
++	},
++};
++
++static inline void __init overo_pps_init(void)
++{
++	int err;
++
++	err = platform_device_register(&ext_pps_gpio_device);
++	if (err) 
++	{
++		pr_warning("Could not register EXT PPS_GPIO device");
++	}
++	return err;
++}
++#else
++static inline void __init overo_pps_init(void) { return;}
++#endif
++
+ static void __init overo_init(void)
+ {
+ 	int ret;
+@@ -825,6 +859,7 @@ static void __init overo_init(void)
+ 	else
+ 		printk(KERN_ERR "could not obtain gpio for "
+ 					"OVERO_GPIO_USBH_CPEN\n");
++	overo_pps_init();
+ }
+ 
+ MACHINE_START(OVERO, "Gumstix Overo")
