@@ -1,0 +1,80 @@
+#!/bin/bash
+### BEGIN INIT INFO
+# Provides:          acomms-gpio
+# Required-Start:    $remote_fs $syslog $all 
+# Required-Stop:     
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 6
+# Short-Description: Enable the GPIO and link the appropriate data into the gpio subsystem.
+### END INIT INFO
+
+#Export FPGA IO and link it somewhere useful
+
+case "$1" in
+   start)
+	echo 222 > /sys/class/gpio/export
+	echo 223 > /sys/class/gpio/export
+	echo 224 > /sys/class/gpio/export
+	echo 225 > /sys/class/gpio/export
+	echo 226 > /sys/class/gpio/export
+	echo 227 > /sys/class/gpio/export
+	echo 228 > /sys/class/gpio/export
+	echo 229 > /sys/class/gpio/export
+	echo 233 > /sys/class/gpio/export
+	echo 234 > /sys/class/gpio/export
+	echo 235 > /sys/class/gpio/export
+	echo 236 > /sys/class/gpio/export
+	echo 237 > /sys/class/gpio/export
+	echo 238 > /sys/class/gpio/export
+
+	mkdir -p /gpio
+	ln -s /sys/class/gpio/gpio222 /gpio/boardio1
+	ln -s /sys/class/gpio/gpio223 /gpio/boardio2
+	ln -s /sys/class/gpio/gpio224 /gpio/boardio3
+	ln -s /sys/class/gpio/gpio225 /gpio/boardio4
+	ln -s /sys/class/gpio/gpio226 /gpio/boardio5
+	ln -s /sys/class/gpio/gpio227 /gpio/boardio6
+	ln -s /sys/class/gpio/gpio228 /gpio/boardio7
+	ln -s /sys/class/gpio/gpio229 /gpio/boardio8
+	
+	ln -s /sys/class/gpio/gpio233 /gpio/power-ethernet
+	ln -s /sys/class/gpio/gpio234 /gpio/power-display
+	ln -s /sys/class/gpio/gpio235 /gpio/power-5v
+	ln -s /sys/class/gpio/gpio236 /gpio/power-sdcard
+
+	ln -s /sys/class/gpio/gpio237 /gpio/i2c-mux
+	ln -s /sys/class/gpio/gpio238 /gpio/com2-mux
+
+	echo out > /gpio/power-ethernet/direction
+	echo out > /gpio/power-display/direction
+	echo out > /gpio/power-5v/direction
+	echo out > /gpio/power-sdcard/direction
+	;;
+   stop)
+	rm -rf /gpio
+        echo 222 > /sys/class/gpio/unexport
+        echo 223 > /sys/class/gpio/unexport
+        echo 224 > /sys/class/gpio/unexport
+        echo 225 > /sys/class/gpio/unexport
+        echo 226 > /sys/class/gpio/unexport
+        echo 227 > /sys/class/gpio/unexport
+        echo 228 > /sys/class/gpio/unexport
+        echo 229 > /sys/class/gpio/unexport
+        echo 233 > /sys/class/gpio/unexport
+        echo 234 > /sys/class/gpio/unexport
+        echo 235 > /sys/class/gpio/unexport
+        echo 236 > /sys/class/gpio/unexport
+        echo 237 > /sys/class/gpio/unexport
+        echo 238 > /sys/class/gpio/unexport
+	;;
+   restart)
+	$0 stop
+	$0 start
+        ;;
+   *)
+    echo "Usage: acomms-gpio {start|stop|restart}"
+    exit 1
+    ;;
+esac
+
+exit 0 
