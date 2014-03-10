@@ -6,7 +6,6 @@ index a6f522f..8b8b3b5 100644
  static inline void __init overo_init_musb(void) { return; }
  #endif
  
-+#if defined(CONFIG_PPS_CLIENT_GPIO) 
 +#include <linux/pps-gpio.h>
 +
 +/* PPS-GPIO platform data */
@@ -36,9 +35,6 @@ index a6f522f..8b8b3b5 100644
 +	}
 +	return err;
 +}
-+#else
-+static inline void __init overo_pps_init(void) { return;}
-+#endif
 +
  static void __init overo_init(void)
  {
