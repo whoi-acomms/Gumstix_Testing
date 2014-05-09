@@ -1,0 +1,99 @@
+From 11a696ec926e900602ea3b7623b6627015637ff5 Mon Sep 17 00:00:00 2001
+From: Andrew Beal <abeal@whoi.edu>
+Date: Tue, 6 May 2014 14:53:49 -0400
+Subject: [PATCH 1/2] Some RTC chips that support Alarm might not always be
+ connected to IRQ. The alarm interrupt of the RTC might
+ be connected to the WAKEUP pin of the CPU, which gets
+ CPU out of suspend to RAM state. Retrieved from
+ rtc-linux google group.
+
+---
+ drivers/rtc/rtc-ds1307.c |   13 +++++++++----
+ 1 file changed, 9 insertions(+), 4 deletions(-)
+
+diff --git a/drivers/rtc/rtc-ds1307.c b/drivers/rtc/rtc-ds1307.c
+index 62b0763..00e97ba 100644
+--- a/drivers/rtc/rtc-ds1307.c
++++ b/drivers/rtc/rtc-ds1307.c
+@@ -105,7 +105,8 @@ struct ds1307 {
+ 	enum ds_type		type;
+ 	unsigned long		flags;
+ #define HAS_NVRAM	0		/* bit 0 == sysfs file active */
+-#define HAS_ALARM	1		/* bit 1 == irq claimed */
++#define HAS_ALARM	1		/* bit 1 == has alarm */
++#define HAS_IRQ		2		/* bit 2 == irq claimed */
+ 	struct i2c_client	*client;
+ 	struct rtc_device	*rtc;
+ 	struct work_struct	work;
+@@ -278,7 +279,7 @@ static void ds1307_work(struct work_struct *work)
+ 	}
+ 
+ out:
+-	if (test_bit(HAS_ALARM, &ds1307->flags))
++	if (test_bit(HAS_IRQ, &ds1307->flags))
+ 		enable_irq(client->irq);
+ 	mutex_unlock(lock);
+ }
+@@ -890,10 +891,14 @@ read_rtc:
+ 		}
+ 
+ 		device_set_wakeup_capable(&client->dev, 1);
+-		set_bit(HAS_ALARM, &ds1307->flags);
++		set_bit(HAS_IRQ, &ds1307->flags);
+ 		dev_dbg(&client->dev, "got IRQ %d\n", client->irq);
+ 	}
+ 
++	/* has Alarm? */
++	if(chip->alarm)
++		set_bit(HAS_ALARM,&ds1307->flags);
++
+ 	if (chip->nvram56) {
+ 		err = sysfs_create_bin_file(&client->dev.kobj, &nvram);
+ 		if (err == 0) {
+@@ -915,7 +920,7 @@ static int __devexit ds1307_remove(struct i2c_client *client)
+ {
+ 	struct ds1307		*ds1307 = i2c_get_clientdata(client);
+ 
+-	if (test_and_clear_bit(HAS_ALARM, &ds1307->flags)) {
++	if (test_and_clear_bit(HAS_IRQ, &ds1307->flags)) {
+ 		free_irq(client->irq, client);
+ 		cancel_work_sync(&ds1307->work);
+ 	}
+-- 
+1.7.10.4
+
+
+From 6ce6bde5ea3cc9f87585886f54a428648162aae7 Mon Sep 17 00:00:00 2001
+From: Andrew Beal <abeal@whoi.edu>
+Date: Tue, 6 May 2014 15:19:42 -0400
+Subject: [PATCH 2/2] In order to allow the creatuion of the sysfs wakealarm
+ attribute, move device_set_wakeup_capable() above RTC
+ device registration
+
+---
+ drivers/rtc/rtc-ds1307.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/rtc/rtc-ds1307.c b/drivers/rtc/rtc-ds1307.c
+index 00e97ba..da057d5 100644
+--- a/drivers/rtc/rtc-ds1307.c
++++ b/drivers/rtc/rtc-ds1307.c
+@@ -872,6 +872,7 @@ read_rtc:
+ 				bin2bcd(tmp));
+ 	}
+ 
++	device_set_wakeup_capable(&client->dev,chip->alarm);
+ 	ds1307->rtc = rtc_device_register(client->name, &client->dev,
+ 				&ds13xx_rtc_ops, THIS_MODULE);
+ 	if (IS_ERR(ds1307->rtc)) {
+@@ -890,7 +891,6 @@ read_rtc:
+ 			goto exit_irq;
+ 		}
+ 
+-		device_set_wakeup_capable(&client->dev, 1);
+ 		set_bit(HAS_IRQ, &ds1307->flags);
+ 		dev_dbg(&client->dev, "got IRQ %d\n", client->irq);
+ 	}
+-- 
+1.7.10.4
+
