@@ -1,9 +1,7 @@
-#!/bin/bash -f
+#!/bin/bash -vf
 
-arecord -f S16_LE -c2 -r48000 -t wav -d 5 test.wav &
-aplay /home/acomms/tests/audiocheck.net_L.wav
-aplay /home/acomms/tests/audiocheck.net_R.wav
+echo "Playing Left Speaker"
+aplay audiocheck.net_L.wav
 sleep 5
-aplay test.wav
-rm -f test.wav 
-
+echo "Playing Right Speaker"
+aplay audiocheck.net_R.wav
