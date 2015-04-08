@@ -11,3 +11,4 @@ cp -af gumstix_*.sh $TEST_DIR/.
 
 #Copy the Audio Tests up a directory.
 (cd audio\ tests; cp -af * $TEST_DIR/.)
+
