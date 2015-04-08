@@ -1,3 +1,6 @@
+Note: Not sure if GumstixTestingUI_gumstixtesting.py or GumstixTestingUI_PlatformGumstixConfiguration.py is the most up-to-date.
+
+
 Gumstix Testing GUI - August 2013
 
 Runs on standard python libraries (Tkinter for the GUI components). Simply run the 'GumstixTestingUI' script to bring up the GUI. 
