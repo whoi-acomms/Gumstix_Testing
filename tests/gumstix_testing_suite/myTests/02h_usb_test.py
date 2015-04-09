@@ -2,6 +2,9 @@
 #This test requires a usb cable connecting USB OTG to USB host on the testbox and a mounted USB card in the board 2nd slot
 #as well as the 'gumstix_usb_test.sh' bash script on the board
 __author__ = 'chet'
+#
+# $Id$
+#
 import gumtools as gt
 import serial
 
