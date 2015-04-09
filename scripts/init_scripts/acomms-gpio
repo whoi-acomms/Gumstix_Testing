@@ -11,7 +11,8 @@
 #Export FPGA IO and link it somewhere useful
 
 case "$1" in
-   start0)
+   start)
+	rm -rf /gpio
 	echo 222 > /sys/class/gpio/export
 	echo 223 > /sys/class/gpio/export
 	echo 224 > /sys/class/gpio/export
@@ -69,10 +70,7 @@ case "$1" in
 	;;
    restart)
 	$0 stop
-	$0 start0
-        ;;
-   start)
-	$0 restart
+	$0 start
         ;;
    *)
     echo "Usage: acomms-gpio {start|stop|restart}"
