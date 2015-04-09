@@ -1,3 +1,5 @@
+$Id$
+
 For Linux kernel, u-boot bootloader, and Debian rootfs configuration, see:
 
 https://github.com/whoi-acomms/gumstix_dev_host (branch: master)
