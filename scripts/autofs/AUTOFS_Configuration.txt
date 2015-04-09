@@ -1,3 +1,5 @@
+$Id$
+
 Another option is autofs instead of the configure
 To use:
 
