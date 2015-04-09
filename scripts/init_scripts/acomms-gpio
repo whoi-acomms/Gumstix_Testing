@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 ### BEGIN INIT INFO
 # Provides:          acomms-gpio
 # Required-Start:    $remote_fs $syslog $all 
