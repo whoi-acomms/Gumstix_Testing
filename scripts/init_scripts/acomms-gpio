@@ -8,6 +8,12 @@
 # Short-Description: Enable the GPIO and link the appropriate data into the gpio subsystem.
 ### END INIT INFO
 
+# Copy this script to /etc/init.d/acomms-gpio then update the rcN.d/
+# directories with:
+# cd /etc/init.d/
+# sudo update-rc.d acomms-gpio defaults
+#
+
 #Export FPGA IO and link it somewhere useful
 
 case "$1" in
