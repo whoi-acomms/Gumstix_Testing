@@ -1,4 +1,7 @@
 #!/bin/bash -f
+#
+# $Id$
+#
 
 #Create major directories
 mkdir -p /home/acomms/toshore
