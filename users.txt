@@ -1,4 +1,0 @@
-andrew = Andrew Beal <no-account@whoi.edu>
-chet = Chet Kilfoyle <no-account@whoi.edu>
-jim = Jim Partan <jpartan@whoi.edu>
-
