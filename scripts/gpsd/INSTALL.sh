@@ -1,5 +1,8 @@
 #!/bin/bash -f
 #This is not executable script. 
+#
+# $Id$
+#
 exit -1
 
 #Thanks to 
