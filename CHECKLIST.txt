@@ -1,3 +1,5 @@
+$Id$
+
 0) Install pyacomms
 1) Install PPP (scripts\ppp)
 	a) Edit inittab to answer the phone!
