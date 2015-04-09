@@ -1,4 +1,7 @@
 #!/bin/bash -f
+#
+# $Id$
+#
 
 #this handles installing the recording software.
 #Run configure to setup the location for the recordings if using secondary storage

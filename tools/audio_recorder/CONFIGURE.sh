@@ -1,4 +1,7 @@
 #!/bin/bash -vf
+#
+# $Id$
+#
 
 #This install the secondary drives as the primary location for recordings. 
 

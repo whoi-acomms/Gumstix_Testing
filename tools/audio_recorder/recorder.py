@@ -1,5 +1,7 @@
 #!/usr/bin/python
 
+# $Id$
+
 import alsaaudio, wave
 from time import strftime,gmtime
 
