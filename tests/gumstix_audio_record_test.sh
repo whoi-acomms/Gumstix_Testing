@@ -1,4 +1,7 @@
 #!/bin/bash -f
+#
+# $Id$
+#
 
 echo "Gumstix Audio Recording Test"
 echo ""

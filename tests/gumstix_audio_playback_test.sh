@@ -1,4 +1,7 @@
 #!/bin/bash -vf
+#
+# $Id$
+#
 
 echo "Playing Left Speaker"
 aplay audiocheck.net_L.wav

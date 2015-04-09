@@ -1,4 +1,7 @@
 #!/bin/bash
+#
+# $Id$
+#
 
 mount /dev/mmcblk1p2 /mnt/
 touch /mnt/test

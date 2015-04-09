@@ -1,4 +1,7 @@
 #!/bin/bash -f
+#
+# $Id$
+#
 
 # set the wake time for the RTC to 30 seconds from now
 sudo echo 0 > /sys/class/rtc/rtc0/wakealarm

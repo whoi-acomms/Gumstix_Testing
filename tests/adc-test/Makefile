@@ -1,4 +1,7 @@
 #Makefile
+#
+# $Id$
+#
 
 SOURCE = adc-test.c
 OBJ = adc-test

@@ -1,4 +1,7 @@
 #Makefile
+#
+# $Id$
+#
 
 SOURCE = watchdog-test.c
 OBJ = watchdog-test

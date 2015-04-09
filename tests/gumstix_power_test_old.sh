@@ -5,7 +5,6 @@
 
 #Turn off Ethernet and WLAN
 ifdown eth0
-ifdown eth1
 ifdown wlan0
 
 # Turn off subsystems
@@ -15,13 +14,12 @@ echo 0 > /gpio/power-5v/value
 echo 0 > /gpio/power-sdcard/value
 
 #Disbale Ethernet
-#modprobe -r smsc911x
+modprobe -r smsc911x
 
 # Disable Wifi
-#modprobe -r libertas_sdio
-#sleep 5
-#echo 0 > /sys/class/gpio/gpio16/value
-rfkill block wlan0
+modprobe -r libertas_sdio
+sleep 5
+echo 0 > /sys/class/gpio/gpio16/value
 
 # Disable Bluetooth
 echo 0 > /sys/class/gpio/gpio164/value
@@ -36,14 +34,11 @@ echo 1 > /gpio/power-5v/value
 echo 1 > /gpio/power-sdcard/value
 
 #Enable Wifi
-#echo 1 > /sys/class/gpio/gpio16/value
-#sleep 5
-#modprobe libertas_sdio
-#sleep 5
-#modprobe libertas_sdio
-
-rfkill unblock wlan0
-
+echo 1 > /sys/class/gpio/gpio16/value
+sleep 5
+modprobe libertas_sdio
+sleep 5
+modprobe libertas_sdio
 
 # Enable Bluetooth
 echo 1 > /sys/class/gpio/gpio164/value
@@ -51,4 +46,3 @@ echo 1 > /sys/class/gpio/gpio164/value
 sleep 5
 ifup wlan0
 ifup eth0
-ifup eth1

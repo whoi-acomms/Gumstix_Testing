@@ -1,4 +1,7 @@
 #!/bin/bash -vf
+#
+# $Id$
+#
 
 stty -F $1 115200
 sleep 1

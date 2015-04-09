@@ -1,3 +1,5 @@
+# $Id$
+
 import serial
 import time
 

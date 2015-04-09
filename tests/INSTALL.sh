@@ -1,4 +1,8 @@
 #!/bin/bash -f
+#
+# $Id$
+#
+
 TEST_DIR=/home/acomms/tests
 
 #Create the test directory

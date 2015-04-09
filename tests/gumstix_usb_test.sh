@@ -1,4 +1,7 @@
 #!/bin/bash -f
+#
+# $Id$
+#
 
 #setup directories to mount the card on
 mkdir /media/sd

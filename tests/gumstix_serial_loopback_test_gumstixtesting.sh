@@ -1,4 +1,7 @@
 #!/bin/bash -f
+#
+# $Id$
+#
 
 #open the serial port, turn off echo and CR to NL
 stty -F $1 $2 -echo -icrnl

@@ -1,4 +1,7 @@
 #!/bin/bash -f
+#
+# $Id$
+#
 
 amixer -q cset iface=MIXER,name="Headset Playback Volume" 2
 amixer -q cset iface=MIXER,name="HeadsetL Mixer AudioL1" 1
