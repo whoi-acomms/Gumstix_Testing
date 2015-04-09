@@ -1,3 +1,5 @@
+$Id$
+
 Note: Not sure if GumstixTestingUI_gumstixtesting.py or GumstixTestingUI_PlatformGumstixConfiguration.py is the most up-to-date.
 
 

@@ -1,3 +1,5 @@
+# $Id$
+
 from Tkinter import *
 from ttk import *
 import sys

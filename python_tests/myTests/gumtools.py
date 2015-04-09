@@ -1,4 +1,7 @@
 __author__ = 'chet'
+#
+# $Id$
+#
 import serial
 import re
 import time

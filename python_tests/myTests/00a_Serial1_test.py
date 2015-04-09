@@ -1,5 +1,8 @@
 #dependencies=""
 __author__ = 'chet'
+#
+# $Id$
+#
 import serial
 import gumtools as gt
 
