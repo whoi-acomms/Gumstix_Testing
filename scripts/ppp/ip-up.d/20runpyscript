@@ -1,4 +1,7 @@
 #!/bin/bash
+#
+# $Id$
+#
 
 /usr/bin/python /home/acomms/scripts/syncfiles.py
 

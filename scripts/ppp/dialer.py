@@ -4,6 +4,7 @@ Created on May 14, 2011
 @author: Eric Gallimore
 '''
 # Stupid simple script to try to dial the Iridium modem a few times
+# $Id$
 
 import os
 import time

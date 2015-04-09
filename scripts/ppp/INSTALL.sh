@@ -1,4 +1,7 @@
 #!/bin/bash -vf
+#
+# $Id$
+#
 
 THIS_SCRIPT='/home/acomms/scripts/dialer.py'
 
