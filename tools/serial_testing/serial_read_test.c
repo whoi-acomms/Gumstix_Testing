@@ -18,6 +18,7 @@
 #define TRUE 1
 
 #define USE_RTSCTS	(0)        
+#define VERY_VERBOSE	(0)
 
 FILE *open_output_file(char *outputfilename);
 int get_baudrate_flag(char *baudrate_string);
@@ -89,7 +90,9 @@ int main(int argc, char *argv[])
 		buf[nread]=0;               /* so we can printf... */
 		if (nread>0) {
 			total_bytes_read += nread;
-			fprintf(stdout,"%s", buf);
+			if (VERY_VERBOSE) {
+				fprintf(stdout,"%s", buf);
+			}
 			nwritten=fwrite(buf, 1, nread, outfp);
 			fflush(outfp);
 			if (nwritten != nread) {

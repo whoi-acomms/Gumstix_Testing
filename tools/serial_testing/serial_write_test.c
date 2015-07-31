@@ -18,6 +18,7 @@
 #define TRUE 1
 
 #define USE_RTSCTS	(0)
+#define VERY_VERBOSE	(0)
         
 FILE *open_input_file(char *inputfilename);
 int get_baudrate_flag(char *baudrate_string);
@@ -69,7 +70,9 @@ int main(int argc, char *argv[])
 		if (nread>0) {
 			total_bytes_read += nread;
 			buf[nread]=0; /* so we can fprintf */
-			fprintf(stdout,"%s", buf);
+			if (VERY_VERBOSE) {
+				fprintf(stdout,"%s", buf);
+			}
 			nwritten=write(fd, buf, nread);
 			/* tcflush(fd, TCIFLUSH); maybe not? */
 			if (nwritten != nread) {
@@ -84,13 +87,9 @@ int main(int argc, char *argv[])
 		}
 	}
 	fclose(infp);
-	fprintf(stderr, "here, line=%d\n", __LINE__);
 	tcflush(fd, TCIFLUSH);
-	fprintf(stderr, "here, line=%d\n", __LINE__);
 	tcsetattr(fd,TCSANOW,&oldtio);
-	fprintf(stderr, "here, line=%d\n", __LINE__);
 	close(fd);
-	fprintf(stderr, "here, line=%d\n", __LINE__);
 	exit(0);
 }
 
