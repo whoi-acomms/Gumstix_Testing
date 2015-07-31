@@ -16,6 +16,8 @@
 #define _POSIX_SOURCE 1 /* POSIX compliant source */
 #define FALSE 0
 #define TRUE 1
+
+#define USE_RTSCTS	(0)
         
 FILE *open_input_file(char *inputfilename);
 int get_baudrate_flag(char *baudrate_string);
@@ -47,7 +49,10 @@ int main(int argc, char *argv[])
 	tcgetattr(fd,&oldtio); /* save current port settings */
 
 	bzero(&newtio, sizeof(newtio));
-	newtio.c_cflag = baudrate_flag | CRTSCTS | CS8 | CLOCAL | CREAD;
+	newtio.c_cflag = baudrate_flag | CS8 | CLOCAL | CREAD;
+	if (USE_RTSCTS) {
+		newtio.c_cflag |= CRTSCTS;
+	}
 	newtio.c_iflag = IGNPAR;
 	newtio.c_oflag = 0;
 			
